@@ -3,10 +3,11 @@ services:
     image: ghcr.io/benjamingolder/cookidoo-planner:latest
     container_name: cookidoo-planner
     restart: unless-stopped
-    env_file: .env
     environment:
       - PORT=8080
       - LOG_FILE=/tmp/debug.log
+      - ADMIN_PASSWORD=changeme
+      - SECRET_KEY=changeme-to-random-string
     volumes:
       - app-data:/app/data
     ports:

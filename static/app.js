@@ -4,6 +4,7 @@ const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Sa
 
 let currentPlan = {};
 let lockedDays = new Set();
+let currentUserIsAdmin = false;
 
 // --- Helpers ---
 
@@ -108,7 +109,7 @@ function initDayFilters() {
 // ===== Auth =====
 
 function showScreen(screenId) {
-    ["auth-screen", "login-screen", "main-app"].forEach(id => {
+    ["auth-screen", "login-screen", "admin-screen", "main-app"].forEach(id => {
         document.getElementById(id).classList.add("hidden");
     });
     document.getElementById(screenId).classList.remove("hidden");
@@ -134,7 +135,7 @@ document.getElementById("auth-login-form").addEventListener("submit", async (e) 
 
     try {
         const result = await apiCall("/api/auth/login", { username, password });
-        onAuthSuccess(result.username);
+        onAuthSuccess(result.username, result.is_admin);
     } catch (err) {
         showStatus("auth-status", err.message, "error");
     }
@@ -151,26 +152,36 @@ document.getElementById("auth-register-form").addEventListener("submit", async (
 
     try {
         const result = await apiCall("/api/auth/register", { username, password, invite_code });
-        onAuthSuccess(result.username);
+        onAuthSuccess(result.username, result.is_admin);
     } catch (err) {
         showStatus("auth-status", err.message, "error");
     }
 });
 
-function onAuthSuccess(username) {
+function onAuthSuccess(username, isAdmin) {
+    currentUserIsAdmin = isAdmin;
     document.getElementById("app-user-name").textContent = username;
     document.getElementById("header-right").classList.remove("hidden");
-    showScreen("login-screen");
+
+    // Einladen-Button nur für Admin
+    document.getElementById("invite-btn").classList.toggle("hidden", !isAdmin);
+
+    if (isAdmin) {
+        showScreen("admin-screen");
+    } else {
+        showScreen("login-screen");
+    }
 }
 
 // Logout
 document.getElementById("logout-btn").addEventListener("click", async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     document.getElementById("header-right").classList.add("hidden");
+    currentUserIsAdmin = false;
     showScreen("auth-screen");
 });
 
-// Invite Code
+// Invite Code (Header Button)
 document.getElementById("invite-btn").addEventListener("click", async () => {
     try {
         const result = await apiCall("/api/auth/invite");
@@ -194,13 +205,33 @@ document.getElementById("invite-close-btn").addEventListener("click", () => {
     document.getElementById("invite-modal").classList.add("hidden");
 });
 
+// Admin Screen - Invite Code
+document.getElementById("admin-invite-btn").addEventListener("click", async () => {
+    try {
+        const result = await apiCall("/api/auth/invite");
+        document.getElementById("admin-invite-code").textContent = result.code;
+        document.getElementById("admin-invite-result").classList.remove("hidden");
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+});
+
+document.getElementById("admin-copy-btn").addEventListener("click", () => {
+    const code = document.getElementById("admin-invite-code").textContent;
+    navigator.clipboard.writeText(code);
+    document.getElementById("admin-copy-btn").textContent = "Kopiert!";
+    setTimeout(() => {
+        document.getElementById("admin-copy-btn").textContent = "Kopieren";
+    }, 2000);
+});
+
 // Session Check on Load
 async function checkAuthStatus() {
     try {
         const resp = await fetch("/api/auth/status");
         const data = await resp.json();
         if (data.logged_in) {
-            onAuthSuccess(data.username);
+            onAuthSuccess(data.username, data.is_admin);
         } else {
             showScreen("auth-screen");
         }
@@ -232,7 +263,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
             `<strong>${collResult.custom_recipes}</strong> Rezepte in ` +
             `<strong>${collResult.custom_collections}</strong> eigenen Sammlungen | ` +
             `<strong>${collResult.managed_recipes}</strong> Rezepte in ` +
-            `<strong>${collResult.managed_collections}</strong> Cookidoo-Menüs`;
+            `<strong>${collResult.managed_collections}</strong> Cookidoo-Men&uuml;s`;
         if (collResult.search_recipes > 0) {
             infoHtml += ` | <strong>${collResult.search_recipes}</strong> Rezepte via Cookidoo-Suche`;
         }

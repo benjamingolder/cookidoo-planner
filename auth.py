@@ -1,5 +1,6 @@
-"""Benutzerverwaltung mit Einladungscode-System."""
+"""Benutzerverwaltung mit Einladungscode-System und Admin-Rolle."""
 
+import os
 import sqlite3
 import uuid
 from datetime import datetime
@@ -19,13 +20,14 @@ def _get_db() -> sqlite3.Connection:
 
 
 def init_db():
-    """Datenbank initialisieren und ggf. ersten Einladungscode erstellen."""
+    """Datenbank initialisieren, Admin-Account erstellen."""
     conn = _get_db()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            is_admin BOOLEAN NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS invite_codes (
@@ -36,24 +38,45 @@ def init_db():
         );
     """)
 
-    # Prüfe ob es bereits Codes gibt
-    existing = conn.execute("SELECT COUNT(*) FROM invite_codes").fetchone()[0]
-    if existing == 0:
-        code = _generate_code()
-        conn.execute(
-            "INSERT INTO invite_codes (code, created_by, created_at) VALUES (?, ?, ?)",
-            (code, "system", datetime.now().isoformat()),
-        )
+    # Migration: is_admin Spalte hinzufügen falls nicht vorhanden
+    columns = [row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "is_admin" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0")
         conn.commit()
-        print(f"\n{'='*50}")
-        print(f"  Erster Einladungscode: {code}")
-        print(f"{'='*50}\n")
+
+    # Admin-Account erstellen falls nicht vorhanden
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if admin_password:
+        existing_admin = conn.execute(
+            "SELECT id FROM users WHERE username = 'admin'"
+        ).fetchone()
+        if not existing_admin:
+            conn.execute(
+                "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, 1, ?)",
+                ("admin", generate_password_hash(admin_password), datetime.now().isoformat()),
+            )
+            conn.commit()
+            print("\n" + "=" * 50)
+            print("  Admin-Account erstellt (username: admin)")
+            print("=" * 50 + "\n")
+    else:
+        print("\nWARNUNG: ADMIN_PASSWORD nicht gesetzt - kein Admin-Account erstellt\n")
 
     conn.close()
 
 
 def _generate_code() -> str:
     return uuid.uuid4().hex[:8].upper()
+
+
+def is_admin(username: str) -> bool:
+    """Prüfe ob ein User Admin ist."""
+    conn = _get_db()
+    user = conn.execute(
+        "SELECT is_admin FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    return bool(user and user["is_admin"])
 
 
 def register_user(username: str, password: str, invite_code: str) -> dict:
@@ -87,10 +110,10 @@ def register_user(username: str, password: str, invite_code: str) -> dict:
         conn.close()
         raise ValueError("Benutzername bereits vergeben")
 
-    # User erstellen
+    # User erstellen (is_admin=0)
     password_hash = generate_password_hash(password)
     conn.execute(
-        "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+        "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, 0, ?)",
         (username, password_hash, datetime.now().isoformat()),
     )
 
@@ -103,7 +126,7 @@ def register_user(username: str, password: str, invite_code: str) -> dict:
     conn.commit()
     conn.close()
 
-    return {"username": username}
+    return {"username": username, "is_admin": False}
 
 
 def verify_user(username: str, password: str) -> dict:
@@ -120,7 +143,7 @@ def verify_user(username: str, password: str) -> dict:
     if not user or not check_password_hash(user["password_hash"], password):
         raise ValueError("Ungültiger Benutzername oder Passwort")
 
-    return {"username": user["username"]}
+    return {"username": user["username"], "is_admin": bool(user["is_admin"])}
 
 
 def create_invite_code(created_by: str) -> str:
@@ -142,5 +165,17 @@ def login_required(f):
     def decorated(*args, **kwargs):
         if "user" not in session:
             return jsonify({"error": "Nicht angemeldet"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+def admin_required(f):
+    """Decorator: Route nur für Admin-User."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user" not in session:
+            return jsonify({"error": "Nicht angemeldet"}), 401
+        if not is_admin(session["user"]):
+            return jsonify({"error": "Keine Berechtigung"}), 403
         return f(*args, **kwargs)
     return decorated
