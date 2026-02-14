@@ -41,6 +41,24 @@ async function apiCall(url, data = {}) {
     return result;
 }
 
+async function apiGet(url) {
+    const response = await fetch(url);
+    const result = await response.json();
+    if (!response.ok || result.error) {
+        throw new Error(result.error || "Unbekannter Fehler");
+    }
+    return result;
+}
+
+async function apiDelete(url) {
+    const response = await fetch(url, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok || result.error) {
+        throw new Error(result.error || "Unbekannter Fehler");
+    }
+    return result;
+}
+
 function getSelectedDays() {
     return Array.from(document.querySelectorAll(".day-cb:checked"))
         .map(cb => parseInt(cb.value));
@@ -53,7 +71,6 @@ function getCustomRatio() {
 function getSelectedFilters(containerId) {
     const container = document.getElementById(containerId);
     const checked = Array.from(container.querySelectorAll("input[type=checkbox]:checked"));
-    // If "alle" is checked, return empty array (no filter)
     if (checked.some(cb => cb.value === "alle")) return [];
     return checked.map(cb => cb.value);
 }
@@ -68,7 +85,6 @@ function initFilterTags(containerId) {
     checkboxes.forEach(cb => {
         cb.addEventListener("change", () => {
             if (cb.value === "alle" && cb.checked) {
-                // "Alle" selected -> uncheck all others
                 checkboxes.forEach(other => {
                     if (other !== cb) {
                         other.checked = false;
@@ -77,14 +93,12 @@ function initFilterTags(containerId) {
                 });
                 cb.closest(".filter-tag").classList.add("active");
             } else if (cb.value !== "alle") {
-                // Specific filter selected -> uncheck "Alle"
                 if (alleCheckbox) {
                     alleCheckbox.checked = false;
                     alleCheckbox.closest(".filter-tag").classList.remove("active");
                 }
                 cb.closest(".filter-tag").classList.toggle("active", cb.checked);
 
-                // If nothing is checked, re-check "Alle"
                 const anyChecked = Array.from(checkboxes).some(c => c.checked);
                 if (!anyChecked && alleCheckbox) {
                     alleCheckbox.checked = true;
@@ -168,6 +182,7 @@ function onAuthSuccess(username, isAdmin) {
 
     if (isAdmin) {
         showScreen("admin-screen");
+        loadAdminData();
     } else {
         showScreen("login-screen");
     }
@@ -205,12 +220,81 @@ document.getElementById("invite-close-btn").addEventListener("click", () => {
     document.getElementById("invite-modal").classList.add("hidden");
 });
 
-// Admin Screen - Invite Code
+// ===== Admin Dashboard =====
+
+async function loadAdminData() {
+    try {
+        const [usersResult, invitesResult] = await Promise.all([
+            apiGet("/api/admin/users"),
+            apiGet("/api/admin/invites"),
+        ]);
+        renderUserList(usersResult.users);
+        renderInviteList(invitesResult.codes);
+    } catch (err) {
+        alert("Admin-Daten laden fehlgeschlagen: " + err.message);
+    }
+}
+
+function renderUserList(users) {
+    const container = document.getElementById("admin-users-list");
+    if (users.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.88rem;">Keine Benutzer vorhanden.</p>';
+        return;
+    }
+
+    let html = '<table class="admin-table"><thead><tr><th>Benutzer</th><th>Erstellt</th><th>Rolle</th><th>Aktionen</th></tr></thead><tbody>';
+    for (const user of users) {
+        const date = new Date(user.created_at).toLocaleDateString("de-CH");
+        const role = user.is_admin ? '<span class="admin-badge">Admin</span>' : 'User';
+        const actions = user.is_admin
+            ? '<span style="color: var(--text-muted); font-size: 0.82rem;">-</span>'
+            : `<button class="btn btn-secondary btn-sm btn-reset-pw" data-id="${user.id}" data-name="${user.username}">Passwort</button>
+               <button class="btn btn-secondary btn-sm btn-delete-user" data-id="${user.id}" data-name="${user.username}" style="color: #dc2626; border-color: #dc2626;">L&ouml;schen</button>`;
+        html += `<tr><td><strong>${user.username}</strong></td><td>${date}</td><td>${role}</td><td>${actions}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    // Event listeners
+    container.querySelectorAll(".btn-reset-pw").forEach(btn => {
+        btn.addEventListener("click", () => openPasswordReset(btn.dataset.id, btn.dataset.name));
+    });
+    container.querySelectorAll(".btn-delete-user").forEach(btn => {
+        btn.addEventListener("click", () => deleteUser(btn.dataset.id, btn.dataset.name));
+    });
+}
+
+function renderInviteList(codes) {
+    const container = document.getElementById("admin-invites-list");
+    const unused = codes.filter(c => !c.used_by);
+    const used = codes.filter(c => c.used_by);
+
+    if (codes.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.88rem;">Keine Codes vorhanden.</p>';
+        return;
+    }
+
+    let html = '<table class="admin-table"><thead><tr><th>Code</th><th>Erstellt</th><th>Status</th></tr></thead><tbody>';
+    for (const code of unused) {
+        const date = new Date(code.created_at).toLocaleDateString("de-CH");
+        html += `<tr><td><code>${code.code}</code></td><td>${date}</td><td><span style="color: var(--primary); font-weight: 500;">Offen</span></td></tr>`;
+    }
+    for (const code of used) {
+        const date = new Date(code.created_at).toLocaleDateString("de-CH");
+        html += `<tr><td><code>${code.code}</code></td><td>${date}</td><td>Verwendet von <strong>${code.used_by}</strong></td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// Admin - Invite Code
 document.getElementById("admin-invite-btn").addEventListener("click", async () => {
     try {
         const result = await apiCall("/api/auth/invite");
         document.getElementById("admin-invite-code").textContent = result.code;
         document.getElementById("admin-invite-result").classList.remove("hidden");
+        document.getElementById("admin-invite-result").style.display = "flex";
+        loadAdminData(); // Refresh lists
     } catch (err) {
         alert("Fehler: " + err.message);
     }
@@ -223,6 +307,48 @@ document.getElementById("admin-copy-btn").addEventListener("click", () => {
     setTimeout(() => {
         document.getElementById("admin-copy-btn").textContent = "Kopieren";
     }, 2000);
+});
+
+// Admin - Delete User
+async function deleteUser(userId, username) {
+    if (!confirm(`Benutzer "${username}" wirklich löschen?`)) return;
+    try {
+        await apiDelete(`/api/admin/users/${userId}`);
+        loadAdminData();
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+}
+
+// Admin - Password Reset
+let resetUserId = null;
+
+function openPasswordReset(userId, username) {
+    resetUserId = userId;
+    document.getElementById("reset-username").textContent = username;
+    document.getElementById("reset-password").value = "";
+    hideStatus("reset-status");
+    document.getElementById("password-modal").classList.remove("hidden");
+}
+
+document.getElementById("reset-confirm-btn").addEventListener("click", async () => {
+    const password = document.getElementById("reset-password").value;
+    if (!password || password.length < 6) {
+        showStatus("reset-status", "Passwort muss mindestens 6 Zeichen lang sein", "error");
+        return;
+    }
+    try {
+        await apiCall(`/api/admin/users/${resetUserId}/reset-password`, { password });
+        document.getElementById("password-modal").classList.add("hidden");
+        resetUserId = null;
+    } catch (err) {
+        showStatus("reset-status", err.message, "error");
+    }
+});
+
+document.getElementById("reset-cancel-btn").addEventListener("click", () => {
+    document.getElementById("password-modal").classList.add("hidden");
+    resetUserId = null;
 });
 
 // Session Check on Load
@@ -269,9 +395,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
         }
         document.getElementById("collection-info").innerHTML = infoHtml;
 
-        // Hide login, show main app
         showScreen("main-app");
-
         hideLoading();
     } catch (err) {
         hideLoading();
@@ -349,7 +473,6 @@ function renderPlan() {
         grid.appendChild(card);
     }
 
-    // Event Listeners
     grid.querySelectorAll(".btn-reroll").forEach(btn => {
         btn.addEventListener("click", () => rerollDay(btn.dataset.day));
     });
@@ -452,17 +575,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const weekOffset = parseInt(document.getElementById("week-offset").value);
     const clearFirst = document.getElementById("clear-first").checked;
     const addShoppingList = document.getElementById("add-shopping-list").checked;
-    const addToBring = bringConnected && document.getElementById("add-to-bring").checked;
-    const bringListUuid = addToBring ? document.getElementById("bring-list").value : "";
 
     const weekLabel = ["diese", "nächste", "übernächste"][weekOffset];
     let confirmMsg = `Plan für ${weekLabel} Woche in Cookidoo speichern?`;
     if (addShoppingList) {
         confirmMsg += "\n\nZutaten werden auch zur Einkaufsliste hinzugefügt.";
-    }
-    if (addToBring) {
-        const listName = document.getElementById("bring-list").selectedOptions[0]?.textContent || "Bring!";
-        confirmMsg += `\n\nZutaten werden zu Bring! (${listName}) hinzugefügt.`;
     }
     if (!confirm(confirmMsg)) return;
 
@@ -474,16 +591,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             week_offset: weekOffset,
             clear_first: clearFirst,
             add_to_shopping_list: addShoppingList,
-            add_to_bring: addToBring,
-            bring_list_uuid: bringListUuid,
         });
 
         let msg = `${result.saved.length} Rezepte gespeichert!`;
         if (result.shopping_added > 0) {
             msg += ` ${result.shopping_added} Zutaten zur Einkaufsliste hinzugefügt.`;
-        }
-        if (result.bring_added > 0) {
-            msg += ` ${result.bring_added} Zutaten zu Bring! hinzugefügt.`;
         }
         if (result.errors && result.errors.length > 0) {
             msg += ` (${result.errors.length} Fehler)`;
@@ -493,56 +605,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     } catch (err) {
         hideLoading();
         showStatus("save-status", err.message, "error");
-    }
-});
-
-// --- Bring! Integration ---
-
-let bringConnected = false;
-
-document.getElementById("bring-toggle").addEventListener("click", () => {
-    const body = document.getElementById("bring-body");
-    const btn = document.getElementById("bring-expand-btn");
-    body.classList.toggle("hidden");
-    btn.classList.toggle("open");
-});
-
-document.getElementById("bring-login-btn").addEventListener("click", async () => {
-    const email = document.getElementById("bring-email").value;
-    const password = document.getElementById("bring-password").value;
-
-    if (!email || !password) {
-        alert("Bitte Bring! E-Mail und Passwort eingeben.");
-        return;
-    }
-
-    showLoading("Verbinde mit Bring!...");
-
-    try {
-        const result = await apiCall("/api/bring/login", { email, password });
-
-        // Listen-Dropdown befüllen
-        const select = document.getElementById("bring-list");
-        select.innerHTML = "";
-        for (const list of result.lists) {
-            const opt = document.createElement("option");
-            opt.value = list.uuid;
-            opt.textContent = list.name;
-            select.appendChild(opt);
-        }
-
-        // UI umschalten
-        document.getElementById("bring-login-row").classList.add("hidden");
-        document.getElementById("bring-connected").classList.remove("hidden");
-        document.getElementById("bring-status").textContent = "Verbunden";
-        document.getElementById("bring-status").classList.add("connected");
-        document.getElementById("add-to-bring").checked = true;
-        bringConnected = true;
-
-        hideLoading();
-    } catch (err) {
-        hideLoading();
-        alert("Bring! Login fehlgeschlagen: " + err.message);
     }
 });
 

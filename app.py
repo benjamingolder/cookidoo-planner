@@ -16,8 +16,12 @@ logging.basicConfig(
 log = logging.getLogger("cookidoo")
 from flask import Flask, jsonify, render_template, request, session
 
-from auth import admin_required, init_db, is_admin, login_required, register_user, verify_user, create_invite_code
-from planner import BringIntegration, CookidooPlanner
+from auth import (
+    admin_required, create_invite_code, delete_user, get_all_users,
+    get_invite_codes, init_db, is_admin, login_required, register_user,
+    reset_user_password, verify_user,
+)
+from planner import CookidooPlanner
 
 load_dotenv()
 
@@ -33,7 +37,6 @@ _loop_thread.start()
 @dataclass
 class UserSession:
     planner: CookidooPlanner = field(default_factory=CookidooPlanner)
-    bring: BringIntegration = field(default_factory=BringIntegration)
     current_plan: dict = field(default_factory=dict)
 
 
@@ -125,10 +128,6 @@ def api_auth_logout():
             run_async(us.planner.close())
         except Exception:
             pass
-        try:
-            run_async(us.bring.close())
-        except Exception:
-            pass
     return jsonify({"success": True})
 
 
@@ -137,6 +136,48 @@ def api_auth_logout():
 def api_auth_invite():
     code = create_invite_code(session["user"])
     return jsonify({"success": True, "code": code})
+
+
+# ===== Admin-Routen =====
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def api_admin_users():
+    users = get_all_users()
+    return jsonify({"success": True, "users": users})
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+@admin_required
+def api_admin_delete_user(user_id):
+    try:
+        delete_user(user_id)
+        # Aktive Session des gelöschten Users aufräumen
+        for username, us in list(_user_sessions.items()):
+            # Wir räumen alle auf, die nicht mehr existieren
+            pass
+        return jsonify({"success": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/admin/users/<int:user_id>/reset-password", methods=["POST"])
+@admin_required
+def api_admin_reset_password(user_id):
+    data = request.get_json() or {}
+    new_password = data.get("password", "")
+    try:
+        reset_user_password(user_id, new_password)
+        return jsonify({"success": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/admin/invites", methods=["GET"])
+@admin_required
+def api_admin_invites():
+    codes = get_invite_codes()
+    return jsonify({"success": True, "codes": codes})
 
 
 # ===== Cookidoo-Routen =====
@@ -242,8 +283,6 @@ def api_save():
         return jsonify({"error": "Kein Plan vorhanden"}), 400
 
     add_to_shopping_list = data.get("add_to_shopping_list", False)
-    add_to_bring = data.get("add_to_bring", False)
-    bring_list_uuid = data.get("bring_list_uuid", "")
 
     try:
         if clear_first:
@@ -251,55 +290,9 @@ def api_save():
 
         result = run_async(us.planner.save_to_calendar(us.current_plan, week_offset, add_to_shopping_list))
 
-        bring_added = 0
-        if add_to_bring and bring_list_uuid:
-            recipe_ids = [
-                r["id"] for r in us.current_plan.values() if r is not None
-            ]
-            cookidoo = us.planner.get_cookidoo()
-            if cookidoo and recipe_ids:
-                try:
-                    bring_added = run_async(
-                        us.bring.add_ingredients(bring_list_uuid, cookidoo, recipe_ids)
-                    )
-                except Exception as e:
-                    log.warning(f"[{session['user']}] Bring! Fehler: {e}")
-                    result.setdefault("errors", []).append(
-                        {"day": "Bring!", "error": str(e)}
-                    )
-
-        return jsonify({"success": True, **result, "bring_added": bring_added})
-    except Exception as e:
-        return jsonify({"error": f"Speichern fehlgeschlagen: {e}"}), 500
-
-
-@app.route("/api/bring/login", methods=["POST"])
-@cookidoo_route
-def api_bring_login():
-    us = get_user_session(session["user"])
-    data = request.get_json() or {}
-    email = data.get("email", "")
-    password = data.get("password", "")
-
-    if not email or not password:
-        return jsonify({"error": "Bring! E-Mail und Passwort erforderlich"}), 400
-
-    try:
-        result = run_async(us.bring.login(email, password))
         return jsonify({"success": True, **result})
     except Exception as e:
-        return jsonify({"error": f"Bring! Login fehlgeschlagen: {e}"}), 401
-
-
-@app.route("/api/bring/lists", methods=["GET"])
-@cookidoo_route
-def api_bring_lists():
-    us = get_user_session(session["user"])
-    try:
-        lists = run_async(us.bring.get_lists())
-        return jsonify({"success": True, "lists": lists})
-    except Exception as e:
-        return jsonify({"error": f"Bring! Listen laden fehlgeschlagen: {e}"}), 500
+        return jsonify({"error": f"Speichern fehlgeschlagen: {e}"}), 500
 
 
 if __name__ == "__main__":

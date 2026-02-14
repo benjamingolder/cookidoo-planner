@@ -146,6 +146,58 @@ def verify_user(username: str, password: str) -> dict:
     return {"username": user["username"], "is_admin": bool(user["is_admin"])}
 
 
+def get_all_users() -> list[dict]:
+    """Alle User auflisten (ohne Passwort-Hash)."""
+    conn = _get_db()
+    rows = conn.execute(
+        "SELECT id, username, is_admin, created_at FROM users ORDER BY created_at"
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def delete_user(user_id: int) -> None:
+    """User löschen (nicht den Admin)."""
+    conn = _get_db()
+    user = conn.execute("SELECT username, is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        raise ValueError("Benutzer nicht gefunden")
+    if user["is_admin"]:
+        conn.close()
+        raise ValueError("Admin-Account kann nicht gelöscht werden")
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+
+def reset_user_password(user_id: int, new_password: str) -> None:
+    """Passwort eines Users zurücksetzen."""
+    if not new_password or len(new_password) < 6:
+        raise ValueError("Passwort muss mindestens 6 Zeichen lang sein")
+    conn = _get_db()
+    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        raise ValueError("Benutzer nicht gefunden")
+    conn.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (generate_password_hash(new_password), user_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_invite_codes() -> list[dict]:
+    """Alle Einladungscodes auflisten."""
+    conn = _get_db()
+    rows = conn.execute(
+        "SELECT code, created_by, used_by, created_at FROM invite_codes ORDER BY created_at DESC"
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
 def create_invite_code(created_by: str) -> str:
     """Neuen Einladungscode generieren."""
     code = _generate_code()
