@@ -1,0 +1,6 @@
+flask
+aiohttp
+bring-api
+cookidoo-api
+gunicorn
+python-dotenv

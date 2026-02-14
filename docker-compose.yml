@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    container_name: cookidoo-planner
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=8080
+      - LOG_FILE=/tmp/debug.log
+    volumes:
+      - app-data:/app/data
+    networks:
+      - tunnel
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - tunnel
+    depends_on:
+      - app
+
+volumes:
+  app-data:
+
+networks:
+  tunnel:

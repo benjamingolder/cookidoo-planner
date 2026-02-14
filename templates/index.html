@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>meal-plan.ch</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- App Header -->
+        <header class="app-header">
+            <div class="logo">
+                <svg class="logo-svg" viewBox="0 0 40 40" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="40" height="40" rx="10" fill="rgba(255,255,255,0.15)"/>
+                    <!-- Calendar body -->
+                    <rect x="8" y="12" width="24" height="20" rx="2.5" stroke="white" stroke-width="1.4" fill="none"/>
+                    <!-- Calendar top bar -->
+                    <line x1="8" y1="17" x2="32" y2="17" stroke="white" stroke-width="1.4"/>
+                    <!-- Calendar rings -->
+                    <line x1="14" y1="9" x2="14" y2="14" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+                    <line x1="26" y1="9" x2="26" y2="14" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+                    <!-- Fork -->
+                    <path d="M17 20v9" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+                    <path d="M15 20v3.5c0 1 0.9 1.5 2 1.5s2-0.5 2-1.5V20" stroke="white" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                    <line x1="17" y1="20" x2="17" y2="23" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+                    <!-- Knife -->
+                    <path d="M23 20v9" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+                    <path d="M23 20c2.2 0 3 1.5 3 3.5s-1 2.5-3 2.5" stroke="white" stroke-width="1.3" stroke-linecap="round" fill="rgba(255,255,255,0.1)"/>
+                </svg>
+                <div class="logo-text">
+                    <span class="logo-name">meal-plan</span><span class="logo-tld">.ch</span>
+                </div>
+            </div>
+            <div id="header-right" class="header-right hidden">
+                <button class="btn-invite" id="invite-btn" title="Einladungscode generieren">+Einladen</button>
+                <div id="user-badge" class="user-badge">
+                    <span id="app-user-name"></span>
+                    <button class="btn-logout" id="logout-btn" title="Abmelden">Abmelden</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="login-screen">
+            <div class="login-card">
+                <div class="login-logo">
+                    <svg viewBox="0 0 56 56" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="56" height="56" rx="14" fill="var(--primary)"/>
+                        <!-- Calendar body -->
+                        <rect x="11" y="16" width="34" height="29" rx="3.5" stroke="white" stroke-width="1.8" fill="none"/>
+                        <!-- Calendar top bar -->
+                        <line x1="11" y1="24" x2="45" y2="24" stroke="white" stroke-width="1.8"/>
+                        <!-- Calendar rings -->
+                        <line x1="20" y1="11" x2="20" y2="18.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="36" y1="11" x2="36" y2="18.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        <!-- Fork -->
+                        <path d="M24 27v13" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M21 27v5c0 1.4 1.3 2.2 3 2.2s3-0.8 3-2.2V27" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+                        <line x1="24" y1="27" x2="24" y2="33" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                        <!-- Knife -->
+                        <path d="M32 27v13" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M32 27c3 0 4.2 2 4.2 4.8s-1.4 3.5-4.2 3.5" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="rgba(255,255,255,0.08)"/>
+                    </svg>
+                </div>
+                <h2>meal-plan.ch</h2>
+                <p class="login-subtitle">Melde dich an oder registriere dich</p>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="auth-login-tab">Anmelden</button>
+                    <button class="auth-tab" data-tab="auth-register-tab">Registrieren</button>
+                </div>
+                <form id="auth-login-form" class="auth-tab-content" data-tab="auth-login-tab">
+                    <div class="form-group">
+                        <label for="auth-username">Benutzername</label>
+                        <input type="text" id="auth-username" placeholder="Benutzername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password">Passwort</label>
+                        <input type="password" id="auth-password" placeholder="Passwort" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Anmelden</button>
+                </form>
+                <form id="auth-register-form" class="auth-tab-content hidden" data-tab="auth-register-tab">
+                    <div class="form-group">
+                        <label for="reg-username">Benutzername</label>
+                        <input type="text" id="reg-username" placeholder="Min. 3 Zeichen" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Passwort</label>
+                        <input type="password" id="reg-password" placeholder="Min. 6 Zeichen" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-invite">Einladungscode</label>
+                        <input type="text" id="reg-invite" placeholder="Code eingeben" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Registrieren</button>
+                </form>
+                <div id="auth-status" class="status hidden"></div>
+            </div>
+        </div>
+
+        <!-- Cookidoo Login Screen -->
+        <div id="login-screen" class="login-screen hidden">
+            <div class="login-card">
+                <h2>Cookidoo verbinden</h2>
+                <p class="login-subtitle">Melde dich mit deinem Cookidoo-Konto an</p>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="email">E-Mail</label>
+                        <input type="email" id="email" placeholder="deine@email.de" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Passwort</label>
+                        <input type="password" id="password" placeholder="Passwort" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="country">Land</label>
+                            <select id="country">
+                                <option value="de">Deutschland</option>
+                                <option value="at">&Ouml;sterreich</option>
+                                <option value="ch">Schweiz</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="language">Sprache</label>
+                            <select id="language">
+                                <option value="de-DE">Deutsch (DE)</option>
+                                <option value="de-AT">Deutsch (AT)</option>
+                                <option value="de-CH">Deutsch (CH)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="login-btn">Anmelden</button>
+                </form>
+                <div id="login-status" class="status hidden"></div>
+            </div>
+        </div>
+
+        <!-- Main App (hidden until login) -->
+        <div id="main-app" class="hidden">
+            <div class="container">
+                <!-- Settings -->
+                <section class="settings-panel" id="settings-section">
+                    <div id="collection-info" class="recipe-count-info"></div>
+
+                    <!-- Kategorie-Filter -->
+                    <div class="filter-section">
+                        <label class="section-label">Kategorie</label>
+                        <div class="filter-tags" id="category-filters">
+                            <label class="filter-tag active"><input type="checkbox" value="alle" checked> Alle</label>
+                            <label class="filter-tag"><input type="checkbox" value="vegetarisch"> Vegetarisch</label>
+                            <label class="filter-tag"><input type="checkbox" value="vegan"> Vegan</label>
+                            <label class="filter-tag"><input type="checkbox" value="low carb"> Low Carb</label>
+                            <label class="filter-tag"><input type="checkbox" value="high protein"> High Protein</label>
+                        </div>
+                    </div>
+
+                    <!-- Küche-Filter -->
+                    <div class="filter-section">
+                        <label class="section-label">K&uuml;che</label>
+                        <div class="filter-tags" id="cuisine-filters">
+                            <label class="filter-tag active"><input type="checkbox" value="alle" checked> Alle</label>
+                            <label class="filter-tag"><input type="checkbox" value="italienisch"> Italienisch</label>
+                            <label class="filter-tag"><input type="checkbox" value="asiatisch"> Asiatisch</label>
+                            <label class="filter-tag"><input type="checkbox" value="mexikanisch"> Mexikanisch</label>
+                            <label class="filter-tag"><input type="checkbox" value="indisch"> Indisch</label>
+                            <label class="filter-tag"><input type="checkbox" value="mediterran"> Mediterran</label>
+                            <label class="filter-tag"><input type="checkbox" value="orientalisch"> Orientalisch</label>
+                        </div>
+                    </div>
+
+                    <!-- Tage -->
+                    <div class="filter-section">
+                        <label class="section-label">Tage planen</label>
+                        <div class="filter-tags" id="day-filters">
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="0" checked> Mo</label>
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="1" checked> Di</label>
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="2" checked> Mi</label>
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="3" checked> Do</label>
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="4" checked> Fr</label>
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="5" checked> Sa</label>
+                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="6" checked> So</label>
+                        </div>
+                    </div>
+
+                    <!-- Mischverhältnis -->
+                    <div class="ratio-slider">
+                        <label class="section-label">Eigene vs. neue Rezepte</label>
+                        <input type="range" id="custom-ratio" min="0" max="100" value="70">
+                        <div class="ratio-display" id="ratio-display">70% eigene / 30% neue</div>
+                    </div>
+
+                    <div class="generate-row">
+                        <button class="btn btn-primary" id="generate-btn">Plan generieren</button>
+                    </div>
+                </section>
+
+                <!-- Plan -->
+                <section id="plan-section" class="hidden">
+                    <div class="plan-header">
+                        <h2>Dein Wochenplan</h2>
+                        <button class="btn btn-secondary btn-sm" id="regenerate-all-btn">Alles neu</button>
+                    </div>
+                    <div id="plan-grid" class="plan-grid"></div>
+
+                    <div class="save-section">
+                        <div class="save-options">
+                            <div class="form-group">
+                                <label for="week-offset">Woche:</label>
+                                <select id="week-offset">
+                                    <option value="0">Diese Woche</option>
+                                    <option value="1" selected>N&auml;chste Woche</option>
+                                    <option value="2">&Uuml;bern&auml;chste Woche</option>
+                                </select>
+                            </div>
+                            <label>
+                                <input type="checkbox" id="clear-first">
+                                Woche vorher leeren
+                            </label>
+                            <label>
+                                <input type="checkbox" id="add-shopping-list">
+                                Zutaten zur Einkaufsliste
+                            </label>
+                        </div>
+
+                        <!-- Bring! Integration -->
+                        <div class="bring-section">
+                            <div class="bring-header" id="bring-toggle">
+                                <span class="bring-logo">Bring!</span>
+                                <span class="bring-status" id="bring-status">Nicht verbunden</span>
+                                <button class="btn-expand" id="bring-expand-btn">&#9660;</button>
+                            </div>
+                            <div class="bring-body hidden" id="bring-body">
+                                <div class="bring-login-row" id="bring-login-row">
+                                    <input type="email" id="bring-email" placeholder="Bring! E-Mail" class="bring-input">
+                                    <input type="password" id="bring-password" placeholder="Passwort" class="bring-input">
+                                    <button class="btn btn-bring btn-sm" id="bring-login-btn">Verbinden</button>
+                                </div>
+                                <div class="bring-connected hidden" id="bring-connected">
+                                    <label>
+                                        <input type="checkbox" id="add-to-bring">
+                                        Zutaten zu Bring! hinzuf&uuml;gen
+                                    </label>
+                                    <div class="form-group">
+                                        <label for="bring-list">Liste:</label>
+                                        <select id="bring-list" class="bring-select"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-success" id="save-btn">In Cookidoo speichern</button>
+                        <div id="save-status" class="status hidden"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Invite Modal -->
+        <div id="invite-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <h3>Einladungscode</h3>
+                <p>Teile diesen Code mit jemandem, damit er sich registrieren kann:</p>
+                <div class="invite-code-display" id="invite-code-display">---</div>
+                <button class="btn btn-secondary btn-sm" id="invite-copy-btn">Kopieren</button>
+                <button class="btn btn-secondary btn-sm" id="invite-close-btn">Schliessen</button>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading-overlay hidden">
+            <div class="loading-spinner"></div>
+            <p id="loading-text">Laden...</p>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
