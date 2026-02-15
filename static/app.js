@@ -397,15 +397,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
         showLoading("Sammlungen werden geladen...");
         const collResult = await apiCall("/api/collections");
 
-        let infoHtml =
-            `<strong>${collResult.custom_recipes}</strong> Rezepte in ` +
-            `<strong>${collResult.custom_collections}</strong> eigenen Sammlungen | ` +
-            `<strong>${collResult.managed_recipes}</strong> Rezepte in ` +
-            `<strong>${collResult.managed_collections}</strong> Cookidoo-Men&uuml;s`;
-        if (collResult.search_recipes > 0) {
-            infoHtml += ` | <strong>${collResult.search_recipes}</strong> Rezepte via Cookidoo-Suche`;
-        }
-        document.getElementById("collection-info").innerHTML = infoHtml;
+        document.getElementById("collection-info").innerHTML = "";
 
         showScreen("main-app");
         hideLoading();

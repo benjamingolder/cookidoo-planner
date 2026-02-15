@@ -733,6 +733,66 @@ select:focus {
     font-weight: 500;
 }
 
+/* ===== Guide Panel ===== */
+.guide-panel {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+    margin-bottom: 16px;
+    border-left: 4px solid var(--primary);
+}
+
+.guide-panel h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.guide-steps {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.guide-steps li {
+    counter-increment: step;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: 10px 12px;
+    background: var(--surface-alt);
+    border-radius: var(--radius-xs);
+    position: relative;
+    padding-left: 36px;
+}
+
+.guide-steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 20px;
+    height: 20px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.guide-steps li strong {
+    color: var(--text);
+}
+
 /* ===== Admin Tables ===== */
 .admin-table {
     width: 100%;
