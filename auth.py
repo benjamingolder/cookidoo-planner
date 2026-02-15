@@ -199,6 +199,21 @@ def get_invite_codes() -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def delete_invite_code(code: str) -> None:
+    """Einladungscode löschen (nur unbenutzte)."""
+    conn = _get_db()
+    row = conn.execute("SELECT used_by FROM invite_codes WHERE code = ?", (code,)).fetchone()
+    if not row:
+        conn.close()
+        raise ValueError("Code nicht gefunden")
+    if row["used_by"]:
+        conn.close()
+        raise ValueError("Bereits verwendeter Code kann nicht gelöscht werden")
+    conn.execute("DELETE FROM invite_codes WHERE code = ?", (code,))
+    conn.commit()
+    conn.close()
+
+
 def create_invite_code(created_by: str) -> str:
     """Neuen Einladungscode generieren."""
     code = _generate_code()

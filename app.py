@@ -17,9 +17,9 @@ log = logging.getLogger("cookidoo")
 from flask import Flask, jsonify, render_template, request, session
 
 from auth import (
-    admin_required, create_invite_code, delete_user, get_all_users,
-    get_invite_codes, init_db, is_admin, login_required, register_user,
-    reset_user_password, verify_user,
+    admin_required, create_invite_code, delete_invite_code, delete_user,
+    get_all_users, get_invite_codes, init_db, is_admin, login_required,
+    register_user, reset_user_password, verify_user,
 )
 from planner import CookidooPlanner
 
@@ -178,6 +178,16 @@ def api_admin_reset_password(user_id):
 def api_admin_invites():
     codes = get_invite_codes()
     return jsonify({"success": True, "codes": codes})
+
+
+@app.route("/api/admin/invites/<code>", methods=["DELETE"])
+@admin_required
+def api_admin_delete_invite(code):
+    try:
+        delete_invite_code(code)
+        return jsonify({"success": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
 
 # ===== Cookidoo-Routen =====

@@ -274,17 +274,29 @@ function renderInviteList(codes) {
         return;
     }
 
-    let html = '<table class="admin-table"><thead><tr><th>Code</th><th>Erstellt</th><th>Status</th></tr></thead><tbody>';
+    let html = '<table class="admin-table"><thead><tr><th>Code</th><th>Erstellt</th><th>Status</th><th></th></tr></thead><tbody>';
     for (const code of unused) {
         const date = new Date(code.created_at).toLocaleDateString("de-CH");
-        html += `<tr><td><code>${code.code}</code></td><td>${date}</td><td><span style="color: var(--primary); font-weight: 500;">Offen</span></td></tr>`;
+        html += `<tr><td><code>${code.code}</code></td><td>${date}</td><td><span style="color: var(--primary); font-weight: 500;">Offen</span></td><td><button class="btn btn-secondary btn-sm btn-delete-invite" data-code="${code.code}" style="color: #dc2626; border-color: #dc2626;">L&ouml;schen</button></td></tr>`;
     }
     for (const code of used) {
         const date = new Date(code.created_at).toLocaleDateString("de-CH");
-        html += `<tr><td><code>${code.code}</code></td><td>${date}</td><td>Verwendet von <strong>${code.used_by}</strong></td></tr>`;
+        html += `<tr><td><code>${code.code}</code></td><td>${date}</td><td>Verwendet von <strong>${code.used_by}</strong></td><td></td></tr>`;
     }
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    container.querySelectorAll(".btn-delete-invite").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            if (!confirm(`Code "${btn.dataset.code}" löschen?`)) return;
+            try {
+                await apiDelete(`/api/admin/invites/${btn.dataset.code}`);
+                loadAdminData();
+            } catch (err) {
+                alert("Fehler: " + err.message);
+            }
+        });
+    });
 }
 
 // Admin - Invite Code
