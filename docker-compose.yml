@@ -6,12 +6,10 @@ services:
     environment:
       - PORT=8080
       - LOG_FILE=/tmp/debug.log
+      - DATA_DIR=/app/data
       - ADMIN_PASSWORD=changeme
       - SECRET_KEY=changeme-to-random-string
     volumes:
-      - app-data:/app/data
+      - /share/Container/meal-plan:/app/data
     ports:
       - "9080:8080"
-
-volumes:
-  app-data:

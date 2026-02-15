@@ -10,7 +10,8 @@ from pathlib import Path
 from flask import jsonify, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-DB_PATH = Path(__file__).parent / "users.db"
+DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).parent))
+DB_PATH = DATA_DIR / "users.db"
 
 
 def _get_db() -> sqlite3.Connection:
