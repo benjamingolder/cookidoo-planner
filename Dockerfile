@@ -7,8 +7,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN mkdir -p /app/data
+
 ENV PORT=8080
 ENV LOG_FILE=/tmp/debug.log
+ENV DATA_DIR=/app/data
 
 EXPOSE 8080
 
