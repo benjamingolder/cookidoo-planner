@@ -235,10 +235,15 @@ body {
 }
 
 .login-card .login-privacy {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-bottom: 28px;
-    font-size: 0.8rem;
-    font-style: italic;
+    font-size: 0.78rem;
+    font-style: normal;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: 10px 14px;
+    line-height: 1.5;
 }
 
 .login-card .form-group {
@@ -738,16 +743,18 @@ select:focus {
     background: var(--surface);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
-    padding: 20px;
+    padding: 24px;
     margin-bottom: 16px;
-    border-left: 4px solid var(--primary);
+    border: 1px solid var(--border-light);
 }
 
 .guide-panel h3 {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    color: var(--primary);
-    margin-bottom: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .guide-steps {
@@ -756,41 +763,42 @@ select:focus {
     padding: 0;
     margin: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
 }
 
 .guide-steps li {
     counter-increment: step;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
     line-height: 1.5;
-    padding: 10px 12px;
+    padding: 14px 12px 14px 12px;
     background: var(--surface-alt);
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-sm);
     position: relative;
-    padding-left: 36px;
+    text-align: center;
+    border: 1px solid var(--border-light);
 }
 
 .guide-steps li::before {
     content: counter(step);
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    width: 20px;
-    height: 20px;
+    display: block;
+    width: 28px;
+    height: 28px;
     background: var(--primary);
     color: white;
     border-radius: 50%;
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    line-height: 28px;
+    text-align: center;
+    margin: 0 auto 8px auto;
 }
 
 .guide-steps li strong {
+    display: block;
     color: var(--text);
+    margin-bottom: 2px;
 }
 
 /* ===== Admin Tables ===== */
@@ -899,6 +907,16 @@ select:focus {
 
     .generate-row {
         flex-direction: column;
+    }
+
+    .guide-steps {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .guide-steps {
+        grid-template-columns: 1fr;
     }
 }
 
