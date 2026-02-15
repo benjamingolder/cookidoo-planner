@@ -200,15 +200,12 @@ def get_invite_codes() -> list[dict]:
 
 
 def delete_invite_code(code: str) -> None:
-    """Einladungscode löschen (nur unbenutzte)."""
+    """Einladungscode löschen."""
     conn = _get_db()
-    row = conn.execute("SELECT used_by FROM invite_codes WHERE code = ?", (code,)).fetchone()
+    row = conn.execute("SELECT code FROM invite_codes WHERE code = ?", (code,)).fetchone()
     if not row:
         conn.close()
         raise ValueError("Code nicht gefunden")
-    if row["used_by"]:
-        conn.close()
-        raise ValueError("Bereits verwendeter Code kann nicht gelöscht werden")
     conn.execute("DELETE FROM invite_codes WHERE code = ?", (code,))
     conn.commit()
     conn.close()
