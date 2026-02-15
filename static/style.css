@@ -230,8 +230,15 @@ body {
 
 .login-card .login-subtitle {
     color: var(--text-secondary);
-    margin-bottom: 28px;
+    margin-bottom: 8px;
     font-size: 0.9rem;
+}
+
+.login-card .login-privacy {
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    font-size: 0.8rem;
+    font-style: italic;
 }
 
 .login-card .form-group {
