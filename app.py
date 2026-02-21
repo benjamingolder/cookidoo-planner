@@ -17,9 +17,10 @@ log = logging.getLogger("cookidoo")
 from flask import Flask, jsonify, render_template, request, session
 
 from auth import (
-    admin_required, create_invite_code, delete_invite_code, delete_user,
-    get_all_users, get_invite_codes, init_db, is_admin, login_required,
-    register_user, reset_user_password, verify_user,
+    admin_required, clear_cookidoo_credentials, create_invite_code,
+    delete_invite_code, delete_user, get_all_users, get_cookidoo_credentials,
+    get_invite_codes, init_db, is_admin, login_required,
+    register_user, reset_user_password, save_cookidoo_credentials, verify_user,
 )
 from planner import CookidooPlanner
 
@@ -232,21 +233,29 @@ def api_load_collections():
 def api_generate():
     us = get_user_session(session["user"])
     data = request.get_json() or {}
-    days = data.get("days", list(range(7)))
+    # day_slots: {dayIdx: ["m","a","m_v","m_d","a_v","a_d"]}
+    day_slots_raw = data.get("day_slots", {str(i): ["m"] for i in range(7)})
+    day_slots = {int(k): v for k, v in day_slots_raw.items()}
     custom_ratio = data.get("custom_ratio", 70)
     exclude_ids = data.get("exclude_ids", [])
     categories = data.get("categories", [])
     cuisines = data.get("cuisines", [])
+    preferred_ingredients = data.get("preferred_ingredients", [])
+    exclude_ingredients = data.get("exclude_ingredients", [])
+    max_time_per_slot = data.get("max_time_per_slot", {"m": None, "a": None})
 
     try:
-        if categories or cuisines:
-            run_async(us.planner.search_with_filters(categories, cuisines))
+        if categories or cuisines or preferred_ingredients:
+            run_async(us.planner.search_with_filters(categories, cuisines, preferred_ingredients))
 
-        plan = run_async(us.planner.generate_plan(days, custom_ratio, exclude_ids))
+        plan = run_async(us.planner.generate_plan(
+            day_slots, custom_ratio, exclude_ids, max_time_per_slot, exclude_ingredients
+        ))
         us.current_plan = {}
-        for day_name, recipe in plan.items():
-            us.current_plan[day_name] = recipe.to_dict() if recipe else None
-        log.info(f"[{session['user']}] Plan: {[(d, r['name'] if r else None) for d, r in us.current_plan.items()]}")
+        for day_name, slots in plan.items():
+            us.current_plan[day_name] = {sk: r.to_dict() if r else None for sk, r in slots.items()}
+
+        log.info(f"[{session['user']}] Plan: {list(us.current_plan.keys())}")
         return jsonify({"success": True, "plan": us.current_plan})
     except Exception as e:
         import traceback
@@ -260,23 +269,46 @@ def api_regenerate_day():
     us = get_user_session(session["user"])
     data = request.get_json() or {}
     day_name = data.get("day")
+    slot_key = data.get("slot_key", "m")  # "m", "a", "m_v", "m_d", "a_v", "a_d"
     custom_ratio = data.get("custom_ratio", 70)
+    max_time_minutes = data.get("max_time_minutes")
     categories = data.get("categories", [])
     cuisines = data.get("cuisines", [])
+    preferred_ingredients = data.get("preferred_ingredients", [])
+    exclude_ingredients = data.get("exclude_ingredients", [])
+    # Per-day override (optional)
+    override_category = data.get("override_category", "")
+    override_cuisine = data.get("override_cuisine", "")
 
-    exclude_ids = [
-        r["id"] for d, r in us.current_plan.items()
-        if r is not None and d != day_name
-    ]
+    # Effektive Kategorie/Küche bestimmen
+    eff_categories = [override_category] if override_category else categories
+    eff_cuisines = [override_cuisine] if override_cuisine else cuisines
+
+    # Slot-Typ bestimmen
+    slot_type = "starter" if "_v" in slot_key else "dessert" if "_d" in slot_key else "main"
+
+    # Aktuell geplante Rezepte ausschliessen (ausser dem neu zu würfelnden)
+    exclude_ids = []
+    for d, slots in us.current_plan.items():
+        for sk, r in slots.items():
+            if r is not None and not (d == day_name and sk == slot_key):
+                exclude_ids.append(r["id"])
 
     try:
-        if categories or cuisines:
-            run_async(us.planner.search_with_filters(categories, cuisines))
+        if eff_categories or eff_cuisines or preferred_ingredients:
+            run_async(us.planner.search_with_filters(eff_categories, eff_cuisines, preferred_ingredients))
 
-        recipe = run_async(us.planner.generate_single(custom_ratio, exclude_ids))
+        recipe = run_async(us.planner.generate_single(
+            custom_ratio, exclude_ids, max_time_minutes, slot_type, exclude_ingredients
+        ))
+
+        if day_name not in us.current_plan:
+            us.current_plan[day_name] = {}
+
         if recipe:
-            us.current_plan[day_name] = recipe.to_dict()
-        return jsonify({"success": True, "recipe": us.current_plan.get(day_name)})
+            us.current_plan[day_name][slot_key] = recipe.to_dict()
+
+        return jsonify({"success": True, "recipe": us.current_plan[day_name].get(slot_key)})
     except Exception as e:
         return jsonify({"error": f"Rezept generieren fehlgeschlagen: {e}"}), 500
 
@@ -303,6 +335,54 @@ def api_save():
         return jsonify({"success": True, **result})
     except Exception as e:
         return jsonify({"error": f"Speichern fehlgeschlagen: {e}"}), 500
+
+
+# ===== Cookidoo-Zugangsdaten (gespeichert pro User) =====
+
+@app.route("/api/cookidoo-credentials", methods=["GET"])
+@cookidoo_route
+def api_get_cookidoo_credentials():
+    creds = get_cookidoo_credentials(session["user"])
+    if creds:
+        return jsonify({"has_credentials": True, **creds})
+    return jsonify({"has_credentials": False})
+
+
+@app.route("/api/cookidoo-credentials", methods=["POST"])
+@cookidoo_route
+def api_save_cookidoo_credentials():
+    data = request.get_json() or {}
+    email = data.get("email", "")
+    password = data.get("password", "")
+    country = data.get("country", "de")
+    language = data.get("language", "de-DE")
+    if not email or not password:
+        return jsonify({"error": "E-Mail und Passwort erforderlich"}), 400
+    save_cookidoo_credentials(session["user"], email, password, country, language)
+    return jsonify({"success": True})
+
+
+@app.route("/api/ingredient-suggestions", methods=["GET"])
+@cookidoo_route
+def api_ingredient_suggestions():
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify({"count": 0, "suggestions": []})
+    us = get_user_session(session["user"])
+    try:
+        result = run_async(us.planner.ingredient_suggestions(query))
+        log.debug(f"[{session['user']}] ingredient_suggestions '{query}': {result}")
+        return jsonify(result)
+    except Exception as e:
+        log.warning(f"[{session['user']}] ingredient_suggestions Fehler: {e}")
+        return jsonify({"count": 0, "suggestions": []})
+
+
+@app.route("/api/cookidoo-credentials", methods=["DELETE"])
+@cookidoo_route
+def api_clear_cookidoo_credentials():
+    clear_cookidoo_credentials(session["user"])
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":

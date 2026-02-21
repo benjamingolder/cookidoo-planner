@@ -126,7 +126,6 @@
             <div class="login-card">
                 <h2>Cookidoo verbinden</h2>
                 <p class="login-subtitle">Melde dich mit deinem Cookidoo-Konto an, um deine Rezepte und Sammlungen zu laden.</p>
-                <p class="login-privacy">&#x1f512; Deine Cookidoo-Zugangsdaten werden nicht gespeichert &ndash; sie werden nur f&uuml;r die aktuelle Sitzung verwendet.</p>
                 <form id="login-form">
                     <div class="form-group">
                         <label for="email">E-Mail</label>
@@ -154,115 +153,182 @@
                             </select>
                         </div>
                     </div>
+                    <div class="save-options" style="margin-bottom: 16px; justify-content: flex-start;">
+                        <label>
+                            <input type="checkbox" id="remember-credentials">
+                            Zugangsdaten merken
+                        </label>
+                    </div>
                     <button type="submit" class="btn btn-primary" id="login-btn">Anmelden</button>
                 </form>
                 <div id="login-status" class="status hidden"></div>
+                <div id="forget-credentials-row" class="hidden" style="margin-top: 12px; text-align: center;">
+                    <button class="btn btn-secondary btn-sm" id="forget-credentials-btn">Gespeicherte Zugangsdaten vergessen</button>
+                </div>
             </div>
         </div>
 
         <!-- Main App (hidden until login) -->
         <div id="main-app" class="hidden">
+            <!-- Versteckt, wird von JS genutzt -->
+            <div id="collection-info" class="hidden"></div>
+
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <div class="action-bar-inner">
+                    <div class="action-buttons">
+                        <button class="btn-filter" id="filter-btn">
+                            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                <line x1="3" y1="5" x2="17" y2="5"/>
+                                <line x1="6" y1="10" x2="14" y2="10"/>
+                                <line x1="9" y1="15" x2="11" y2="15"/>
+                            </svg>
+                            <span>Filter</span>
+                            <span class="filter-badge hidden" id="filter-badge">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan -->
             <div class="container">
-                <!-- Settings -->
-                <section class="guide-panel">
-                    <h3>So funktioniert's</h3>
-                    <ol class="guide-steps">
-                        <li><strong>Filter w&auml;hlen</strong>Kategorie, K&uuml;che und Tage ausw&auml;hlen</li>
-                        <li><strong>Generieren</strong>Plan per Knopfdruck erstellen</li>
-                        <li><strong>Anpassen</strong>Einzelne Tage neu w&uuml;rfeln</li>
-                        <li><strong>Speichern</strong>In Cookidoo &uuml;bernehmen</li>
-                    </ol>
-                </section>
-
-                <section class="settings-panel" id="settings-section">
-                    <div id="collection-info"></div>
-
-                    <!-- Kategorie-Filter -->
-                    <div class="filter-section">
-                        <label class="section-label">Kategorie</label>
-                        <div class="filter-tags" id="category-filters">
-                            <label class="filter-tag active"><input type="checkbox" value="alle" checked> Alle</label>
-                            <label class="filter-tag"><input type="checkbox" value="vegetarisch"> Vegetarisch</label>
-                            <label class="filter-tag"><input type="checkbox" value="vegan"> Vegan</label>
-                            <label class="filter-tag"><input type="checkbox" value="low carb"> Low Carb</label>
-                            <label class="filter-tag"><input type="checkbox" value="high protein"> High Protein</label>
-                        </div>
-                    </div>
-
-                    <!-- Küche-Filter -->
-                    <div class="filter-section">
-                        <label class="section-label">K&uuml;che</label>
-                        <div class="filter-tags" id="cuisine-filters">
-                            <label class="filter-tag active"><input type="checkbox" value="alle" checked> Alle</label>
-                            <label class="filter-tag"><input type="checkbox" value="italienisch"> Italienisch</label>
-                            <label class="filter-tag"><input type="checkbox" value="asiatisch"> Asiatisch</label>
-                            <label class="filter-tag"><input type="checkbox" value="mexikanisch"> Mexikanisch</label>
-                            <label class="filter-tag"><input type="checkbox" value="indisch"> Indisch</label>
-                            <label class="filter-tag"><input type="checkbox" value="mediterran"> Mediterran</label>
-                            <label class="filter-tag"><input type="checkbox" value="orientalisch"> Orientalisch</label>
-                        </div>
-                    </div>
-
-                    <!-- Tage -->
-                    <div class="filter-section">
-                        <label class="section-label">Tage planen</label>
-                        <div class="filter-tags" id="day-filters">
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="0" checked> Mo</label>
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="1" checked> Di</label>
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="2" checked> Mi</label>
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="3" checked> Do</label>
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="4" checked> Fr</label>
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="5" checked> Sa</label>
-                            <label class="filter-tag active"><input type="checkbox" class="day-cb" value="6" checked> So</label>
-                        </div>
-                    </div>
-
-                    <!-- Mischverhältnis -->
-                    <div class="ratio-slider">
-                        <label class="section-label">Eigene vs. neue Rezepte</label>
-                        <input type="range" id="custom-ratio" min="0" max="100" value="70">
-                        <div class="ratio-display" id="ratio-display">70% eigene / 30% neue</div>
-                    </div>
-
-                    <div class="generate-row">
-                        <button class="btn btn-primary" id="generate-btn">Plan generieren</button>
-                    </div>
-                </section>
-
-                <!-- Plan -->
-                <section id="plan-section" class="hidden">
-                    <div class="plan-header">
-                        <h2>Dein Wochenplan</h2>
-                        <button class="btn btn-secondary btn-sm" id="regenerate-all-btn">Alles neu</button>
-                    </div>
+                <section id="plan-section">
                     <div id="plan-grid" class="plan-grid"></div>
-
-                    <div class="save-section">
-                        <div class="save-options">
-                            <div class="form-group">
-                                <label for="week-offset">Woche:</label>
-                                <select id="week-offset">
-                                    <option value="0">Diese Woche</option>
-                                    <option value="1" selected>N&auml;chste Woche</option>
-                                    <option value="2">&Uuml;bern&auml;chste Woche</option>
-                                </select>
-                            </div>
-                            <label>
-                                <input type="checkbox" id="clear-first">
-                                Woche vorher leeren
-                            </label>
-                            <label>
-                                <input type="checkbox" id="add-shopping-list">
-                                Zutaten zur Einkaufsliste
-                            </label>
-                        </div>
-
-                        <button class="btn btn-success" id="save-btn">In Cookidoo speichern</button>
-                        <div id="save-status" class="status hidden"></div>
-                    </div>
                 </section>
             </div>
+
+            <!-- Save Bar (fixed bottom) -->
+            <div id="save-section" class="save-section hidden">
+                <div class="save-options">
+                    <div class="form-group">
+                        <label for="week-offset">Woche:</label>
+                        <select id="week-offset">
+                            <option value="0">Diese Woche</option>
+                            <option value="1" selected>N&auml;chste Woche</option>
+                            <option value="2">&Uuml;bern&auml;chste Woche</option>
+                        </select>
+                    </div>
+                    <label>
+                        <input type="checkbox" id="clear-first">
+                        Woche vorher leeren
+                    </label>
+                    <label>
+                        <input type="checkbox" id="add-shopping-list">
+                        Zutaten zur Einkaufsliste
+                    </label>
+                </div>
+                <button class="btn btn-success" id="save-btn">In Cookidoo speichern</button>
+                <div id="save-status" class="status hidden" style="margin: 0; flex-basis: 100%;"></div>
+            </div>
         </div>
+
+        <!-- Filter Panel -->
+        <div id="filter-panel" class="filter-panel">
+            <div class="filter-panel-header">
+                <h3>Filter</h3>
+                <button class="filter-close-btn" id="filter-close-btn" title="Schliessen">&#x2715;</button>
+            </div>
+            <div class="filter-panel-body">
+
+                <!-- Kategorie -->
+                <div class="filter-panel-section">
+                    <label class="filter-panel-label">Kategorie</label>
+                    <div class="filter-tags" id="category-filters">
+                        <label class="filter-tag active"><input type="checkbox" value="alle" checked> Alle</label>
+                        <label class="filter-tag"><input type="checkbox" value="vegetarisch"> Vegetarisch</label>
+                        <label class="filter-tag"><input type="checkbox" value="vegan"> Vegan</label>
+                        <label class="filter-tag"><input type="checkbox" value="low carb"> Low Carb</label>
+                        <label class="filter-tag"><input type="checkbox" value="high protein"> High Protein</label>
+                    </div>
+                </div>
+
+                <!-- Küche -->
+                <div class="filter-panel-section">
+                    <label class="filter-panel-label">K&uuml;che</label>
+                    <div class="filter-tags" id="cuisine-filters">
+                        <label class="filter-tag active"><input type="checkbox" value="alle" checked> Alle</label>
+                        <label class="filter-tag"><input type="checkbox" value="italienisch"> Italienisch</label>
+                        <label class="filter-tag"><input type="checkbox" value="asiatisch"> Asiatisch</label>
+                        <label class="filter-tag"><input type="checkbox" value="mexikanisch"> Mexikanisch</label>
+                        <label class="filter-tag"><input type="checkbox" value="indisch"> Indisch</label>
+                        <label class="filter-tag"><input type="checkbox" value="mediterran"> Mediterran</label>
+                        <label class="filter-tag"><input type="checkbox" value="orientalisch"> Orientalisch</label>
+                    </div>
+                </div>
+
+                <!-- Max. Kochzeit -->
+                <div class="filter-panel-section">
+                    <label class="filter-panel-label">Max. Kochzeit</label>
+                    <div class="time-filter-slots">
+                        <div class="time-filter-slot">
+                            <span class="time-slot-label">Mittag</span>
+                            <select id="max-time-0">
+                                <option value="">Keine Begrenzung</option>
+                                <option value="30">30 Min.</option>
+                                <option value="45">45 Min.</option>
+                                <option value="60">60 Min.</option>
+                                <option value="90">90 Min.</option>
+                                <option value="120">120 Min.</option>
+                            </select>
+                        </div>
+                        <div class="time-filter-slot">
+                            <span class="time-slot-label">Abend</span>
+                            <select id="max-time-1">
+                                <option value="">Keine Begrenzung</option>
+                                <option value="30">30 Min.</option>
+                                <option value="45">45 Min.</option>
+                                <option value="60">60 Min.</option>
+                                <option value="90">90 Min.</option>
+                                <option value="120">120 Min.</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mischverhältnis -->
+                <div class="filter-panel-section">
+                    <label class="filter-panel-label">Eigene vs. neue Rezepte</label>
+                    <input type="range" id="custom-ratio" min="0" max="100" value="70" style="width:100%; margin: 8px 0;">
+                    <div class="ratio-display" id="ratio-display">70% eigene / 30% neue</div>
+                </div>
+
+                <!-- Zutaten ausschliessen -->
+                <div class="filter-panel-section">
+                    <label class="filter-panel-label">Zutaten ausschlie&szlig;en</label>
+                    <p class="filter-panel-hint">Rezepte mit diesen Zutaten im Titel werden ausgeschlossen.</p>
+                    <div class="ingredient-input-wrapper">
+                        <div class="ingredient-input-row">
+                            <input type="text" id="exclude-ingredient-input" placeholder="z.B. N&uuml;sse, Milch..." autocomplete="off">
+                            <button class="btn-add-ingredient" id="add-exclude-btn" title="Hinzuf&uuml;gen">+</button>
+                        </div>
+                        <div class="ingredient-autocomplete hidden" id="exclude-autocomplete"></div>
+                    </div>
+                    <div class="ingredient-chips" id="exclude-chips"></div>
+                </div>
+
+                <!-- Bevorzugte Zutaten -->
+                <div class="filter-panel-section">
+                    <label class="filter-panel-label">Bevorzugte Zutaten</label>
+                    <p class="filter-panel-hint">Rezepte mit diesen Zutaten werden bevorzugt gesucht.</p>
+                    <div class="ingredient-input-wrapper">
+                        <div class="ingredient-input-row">
+                            <input type="text" id="prefer-ingredient-input" placeholder="z.B. H&auml;hnchen, Tomate..." autocomplete="off">
+                            <button class="btn-add-ingredient" id="add-prefer-btn" title="Hinzuf&uuml;gen">+</button>
+                        </div>
+                        <div class="ingredient-autocomplete hidden" id="prefer-autocomplete"></div>
+                    </div>
+                    <div class="ingredient-chips" id="prefer-chips"></div>
+                </div>
+
+            </div>
+            <div class="filter-panel-footer">
+                <button class="btn btn-primary" id="filter-apply-btn">Speichern</button>
+                <button class="btn btn-secondary hidden" id="filter-reset-btn">Zur&uuml;cksetzen</button>
+            </div>
+        </div>
+
+        <!-- Filter Backdrop -->
+        <div id="filter-backdrop" class="filter-backdrop"></div>
 
         <!-- Invite Modal -->
         <div id="invite-modal" class="modal-overlay hidden">
@@ -288,6 +354,59 @@
                 <div id="reset-status" class="status hidden" style="margin-top: 12px;"></div>
             </div>
         </div>
+
+        <!-- Per-Day Filter Popover (Singleton) -->
+        <div id="per-day-filter-popover" class="per-day-filter-popover">
+            <div class="per-day-filter-header">
+                <span id="per-day-filter-title">Filter: Tag</span>
+                <button class="per-day-filter-close" id="per-day-filter-close" title="Schlie&szlig;en">&#x2715;</button>
+            </div>
+            <!-- Meal config section (populated by JS) -->
+            <div id="per-day-meal-section" class="per-day-meal-section"></div>
+            <div class="per-day-filter-body">
+                <div class="form-group">
+                    <label>Kategorie</label>
+                    <select id="per-day-category">
+                        <option value="">Globaler Filter</option>
+                        <option value="vegetarisch">Vegetarisch</option>
+                        <option value="vegan">Vegan</option>
+                        <option value="low carb">Low Carb</option>
+                        <option value="high protein">High Protein</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>K&uuml;che</label>
+                    <select id="per-day-cuisine">
+                        <option value="">Globaler Filter</option>
+                        <option value="italienisch">Italienisch</option>
+                        <option value="asiatisch">Asiatisch</option>
+                        <option value="mexikanisch">Mexikanisch</option>
+                        <option value="indisch">Indisch</option>
+                        <option value="mediterran">Mediterran</option>
+                        <option value="orientalisch">Orientalisch</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Max. Kochzeit</label>
+                    <select id="per-day-max-time">
+                        <option value="">Globaler Filter</option>
+                        <option value="30">30 Min.</option>
+                        <option value="45">45 Min.</option>
+                        <option value="60">60 Min.</option>
+                        <option value="90">90 Min.</option>
+                        <option value="120">120 Min.</option>
+                    </select>
+                </div>
+            </div>
+            <div class="per-day-filter-footer">
+                <button class="btn btn-secondary btn-sm" id="per-day-clear">Zur&uuml;cksetzen</button>
+                <button class="btn btn-primary btn-sm" id="per-day-apply">Neu w&uuml;rfeln</button>
+            </div>
+        </div>
+        <div id="per-day-filter-backdrop" class="per-day-filter-backdrop"></div>
+
+        <!-- Globales Card-Aktionsmenü (Singleton, position: fixed) -->
+        <div id="card-action-dropdown" class="card-action-dropdown hidden"></div>
 
         <!-- Loading -->
         <div id="loading" class="loading-overlay hidden">

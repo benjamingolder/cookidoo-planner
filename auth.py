@@ -1,5 +1,7 @@
 """Benutzerverwaltung mit Einladungscode-System und Admin-Rolle."""
 
+import base64
+import hashlib
 import os
 import sqlite3
 import uuid
@@ -18,6 +20,23 @@ def _get_db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _cipher_key() -> bytes:
+    secret = os.getenv("SECRET_KEY", "default-secret").encode()
+    return hashlib.sha256(secret).digest()
+
+
+def _xor_encrypt(data: str) -> str:
+    key = _cipher_key()
+    enc = bytes(b ^ key[i % len(key)] for i, b in enumerate(data.encode("utf-8")))
+    return base64.b64encode(enc).decode("ascii")
+
+
+def _xor_decrypt(data: str) -> str:
+    key = _cipher_key()
+    enc = base64.b64decode(data.encode("ascii"))
+    return bytes(b ^ key[i % len(key)] for i, b in enumerate(enc)).decode("utf-8")
 
 
 def init_db():
@@ -39,11 +58,14 @@ def init_db():
         );
     """)
 
-    # Migration: is_admin Spalte hinzufügen falls nicht vorhanden
+    # Migrations
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "is_admin" not in columns:
         conn.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0")
-        conn.commit()
+    for col in ["cookidoo_email", "cookidoo_password_enc", "cookidoo_country", "cookidoo_language"]:
+        if col not in columns:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
+    conn.commit()
 
     # Admin-Account erstellen falls nicht vorhanden
     admin_password = os.getenv("ADMIN_PASSWORD")
@@ -207,6 +229,49 @@ def delete_invite_code(code: str) -> None:
         conn.close()
         raise ValueError("Code nicht gefunden")
     conn.execute("DELETE FROM invite_codes WHERE code = ?", (code,))
+    conn.commit()
+    conn.close()
+
+
+def save_cookidoo_credentials(username: str, email: str, password: str, country: str, language: str) -> None:
+    """Cookidoo-Zugangsdaten verschlüsselt speichern."""
+    conn = _get_db()
+    conn.execute(
+        "UPDATE users SET cookidoo_email=?, cookidoo_password_enc=?, cookidoo_country=?, cookidoo_language=? WHERE username=?",
+        (email, _xor_encrypt(password), country, language, username),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_cookidoo_credentials(username: str) -> dict | None:
+    """Gespeicherte Cookidoo-Zugangsdaten holen und entschlüsseln."""
+    conn = _get_db()
+    row = conn.execute(
+        "SELECT cookidoo_email, cookidoo_password_enc, cookidoo_country, cookidoo_language FROM users WHERE username=?",
+        (username,),
+    ).fetchone()
+    conn.close()
+    if not row or not row["cookidoo_email"]:
+        return None
+    try:
+        return {
+            "email": row["cookidoo_email"],
+            "password": _xor_decrypt(row["cookidoo_password_enc"]),
+            "country": row["cookidoo_country"] or "de",
+            "language": row["cookidoo_language"] or "de-DE",
+        }
+    except Exception:
+        return None
+
+
+def clear_cookidoo_credentials(username: str) -> None:
+    """Gespeicherte Cookidoo-Zugangsdaten löschen."""
+    conn = _get_db()
+    conn.execute(
+        "UPDATE users SET cookidoo_email=NULL, cookidoo_password_enc=NULL, cookidoo_country=NULL, cookidoo_language=NULL WHERE username=?",
+        (username,),
+    )
     conn.commit()
     conn.close()
 
