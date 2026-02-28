@@ -241,16 +241,17 @@ def api_generate():
     exclude_ids = data.get("exclude_ids", [])
     categories = data.get("categories", [])
     cuisines = data.get("cuisines", [])
+    languages = data.get("languages", [])
     preferred_ingredients = data.get("preferred_ingredients", [])
     exclude_ingredients = data.get("exclude_ingredients", [])
     max_time_per_slot = data.get("max_time_per_slot", {"m": None, "a": None})
 
     try:
-        if categories or cuisines or preferred_ingredients:
-            run_async(us.planner.search_with_filters(categories, cuisines, preferred_ingredients))
+        if categories or cuisines or preferred_ingredients or languages:
+            run_async(us.planner.search_with_filters(categories, cuisines, preferred_ingredients, languages))
 
         plan = run_async(us.planner.generate_plan(
-            day_slots, custom_ratio, exclude_ids, max_time_per_slot, exclude_ingredients
+            day_slots, custom_ratio, exclude_ids, max_time_per_slot, exclude_ingredients, languages
         ))
         us.current_plan = {}
         for day_name, slots in plan.items():
@@ -275,6 +276,7 @@ def api_regenerate_day():
     max_time_minutes = data.get("max_time_minutes")
     categories = data.get("categories", [])
     cuisines = data.get("cuisines", [])
+    languages = data.get("languages", [])
     preferred_ingredients = data.get("preferred_ingredients", [])
     exclude_ingredients = data.get("exclude_ingredients", [])
     # Per-day override (optional)
@@ -296,11 +298,11 @@ def api_regenerate_day():
                 exclude_ids.append(r["id"])
 
     try:
-        if eff_categories or eff_cuisines or preferred_ingredients:
-            run_async(us.planner.search_with_filters(eff_categories, eff_cuisines, preferred_ingredients))
+        if eff_categories or eff_cuisines or preferred_ingredients or languages:
+            run_async(us.planner.search_with_filters(eff_categories, eff_cuisines, preferred_ingredients, languages))
 
         recipe = run_async(us.planner.generate_single(
-            custom_ratio, exclude_ids, max_time_minutes, slot_type, exclude_ingredients
+            custom_ratio, exclude_ids, max_time_minutes, slot_type, exclude_ingredients, languages
         ))
 
         if day_name not in us.current_plan:

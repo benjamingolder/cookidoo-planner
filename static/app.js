@@ -750,6 +750,7 @@ function updateFilterBadge() {
     let count = 0;
     if (getSelectedFilters("category-filters").length > 0) count++;
     if (getSelectedFilters("cuisine-filters").length > 0) count++;
+    if (getSelectedFilters("language-filters").length > 0) count++;
     const maxTime = getMaxTimePerSlot();
     if (maxTime.m !== null || maxTime.a !== null) count++;
     if (getCustomRatio() !== 70) count++;
@@ -772,6 +773,10 @@ function resetFilters() {
         cb.checked = cb.value === "alle";
         cb.closest(".filter-tag").classList.toggle("active", cb.value === "alle");
     });
+    document.querySelectorAll("#language-filters input[type=checkbox]").forEach(cb => {
+        cb.checked = cb.value === "alle";
+        cb.closest(".filter-tag").classList.toggle("active", cb.value === "alle");
+    });
     document.getElementById("max-time-0").value = "";
     document.getElementById("max-time-1").value = "";
     document.getElementById("custom-ratio").value = 70;
@@ -790,6 +795,7 @@ function saveFiltersToStorage() {
         const data = {
             categories: getSelectedFilters("category-filters"),
             cuisines: getSelectedFilters("cuisine-filters"),
+            languages: getSelectedFilters("language-filters"),
             max_time_0: document.getElementById("max-time-0").value,
             max_time_1: document.getElementById("max-time-1").value,
             custom_ratio: getCustomRatio(),
@@ -841,6 +847,13 @@ function loadFiltersFromStorage() {
         if (Array.isArray(data.cuisines)) {
             document.querySelectorAll("#cuisine-filters input[type=checkbox]").forEach(cb => {
                 const active = data.cuisines.length === 0 ? cb.value === "alle" : data.cuisines.includes(cb.value);
+                cb.checked = active;
+                cb.closest(".filter-tag").classList.toggle("active", active);
+            });
+        }
+        if (Array.isArray(data.languages)) {
+            document.querySelectorAll("#language-filters input[type=checkbox]").forEach(cb => {
+                const active = data.languages.length === 0 ? cb.value === "alle" : data.languages.includes(cb.value);
                 cb.checked = active;
                 cb.closest(".filter-tag").classList.toggle("active", active);
             });
@@ -1204,6 +1217,7 @@ async function autoPreviewPlan() {
             custom_ratio: getCustomRatio(),
             categories: getSelectedFilters("category-filters"),
             cuisines: getSelectedFilters("cuisine-filters"),
+            languages: getSelectedFilters("language-filters"),
             preferred_ingredients: preferredIngredients,
             exclude_ingredients: excludeIngredients,
             max_time_per_slot: getMaxTimePerSlot(),
@@ -1242,6 +1256,7 @@ async function generatePlan() {
             custom_ratio: getCustomRatio(),
             categories: getSelectedFilters("category-filters"),
             cuisines: getSelectedFilters("cuisine-filters"),
+            languages: getSelectedFilters("language-filters"),
             preferred_ingredients: preferredIngredients,
             exclude_ingredients: excludeIngredients,
             max_time_per_slot: getMaxTimePerSlot(),
@@ -1280,6 +1295,7 @@ async function rerollDay(dayName, slotKey) {
             custom_ratio: getCustomRatio(),
             categories: getSelectedFilters("category-filters"),
             cuisines: getSelectedFilters("cuisine-filters"),
+            languages: getSelectedFilters("language-filters"),
             preferred_ingredients: preferredIngredients,
             exclude_ingredients: excludeIngredients,
             max_time_minutes: maxTimeMinutes,
@@ -1331,6 +1347,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
 initFilterTags("category-filters");
 initFilterTags("cuisine-filters");
+initFilterTags("language-filters");
 
 document.getElementById("filter-btn").addEventListener("click", openFilterPanel);
 document.getElementById("filter-close-btn").addEventListener("click", closeFilterPanel);

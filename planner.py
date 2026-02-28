@@ -212,6 +212,7 @@ class CookidooPlanner:
         self._algolia_api_key: str | None = None
         # None = unbekannt, "" = kein Facet verfügbar, str = funktionierender Facet-Name
         self._ingredient_facet: str | None = None
+        self._language_filter: str = ""  # Algolia-Filter für Sprachen
 
     async def login(self, email: str, password: str, country: str = "de", language: str = "de-DE") -> dict:
         if self._session:
@@ -276,8 +277,11 @@ class CookidooPlanner:
             "Content-Type": "application/json",
         }
         payload = {"query": query, "hitsPerPage": count}
-        if filters:
-            payload["filters"] = filters
+        combined_filters = filters
+        if self._language_filter:
+            combined_filters = f"({self._language_filter})" if not combined_filters else f"({combined_filters}) AND ({self._language_filter})"
+        if combined_filters:
+            payload["filters"] = combined_filters
 
         try:
             async with self._session.post(ALGOLIA_SEARCH_URL, headers=headers, json=payload) as resp:
@@ -311,13 +315,32 @@ class CookidooPlanner:
                     pool.append(r)
         return pool
 
+    def _set_language_filter(self, languages: list[str] | None) -> None:
+        """Setzt den Algolia-Sprachfilter basierend auf den gewählten Sprachen."""
+        locale_map = {
+            "de": ["de-DE", "de-AT", "de-CH"],
+            "fr": ["fr-FR", "fr-BE", "fr-CH"],
+            "it": ["it-IT", "it-CH"],
+            "en": ["en-GB", "en-US"],
+        }
+        if not languages:
+            self._language_filter = ""
+            return
+        locales = []
+        for lang in languages:
+            locales.extend(locale_map.get(lang.lower(), [lang]))
+        self._language_filter = " OR ".join(f"locales:{loc}" for loc in locales)
+        log.info(f"Sprachfilter gesetzt: {self._language_filter}")
+
     async def search_with_filters(
         self,
         categories: list[str] | None = None,
         cuisines: list[str] | None = None,
         preferred_ingredients: list[str] | None = None,
+        languages: list[str] | None = None,
     ) -> int:
         """Lade Hauptgerichte via Algolia mit optionalen Filtern."""
+        self._set_language_filter(languages)
         search_terms = list(SEARCH_TERMS)
 
         category_terms = {
@@ -489,6 +512,7 @@ class CookidooPlanner:
         exclude_ids: list[str] | None = None,
         max_time_per_slot: dict[str, int | None] | None = None,  # {"m": 60, "a": None}
         exclude_ingredients: list[str] | None = None,
+        languages: list[str] | None = None,
     ) -> dict[str, dict[str, RecipeInfo | None]]:
         """Generiert einen Wochenplan mit pro-Tag-Konfiguration und Vorspeise/Dessert.
 
@@ -496,6 +520,8 @@ class CookidooPlanner:
         """
         if not day_slots:
             return {}
+
+        self._set_language_filter(languages)
 
         if max_time_per_slot is None:
             max_time_per_slot = {"m": None, "a": None}
@@ -580,8 +606,10 @@ class CookidooPlanner:
         max_time_minutes: int | None = None,
         slot_type: str = "main",
         exclude_ingredients: list[str] | None = None,
+        languages: list[str] | None = None,
     ) -> RecipeInfo | None:
         """Generiert ein einzelnes Rezept (für Reroll)."""
+        self._set_language_filter(languages)
         # Sicherstellen dass der Pool geladen ist
         if slot_type == "starter":
             await self._ensure_starter_pool()
