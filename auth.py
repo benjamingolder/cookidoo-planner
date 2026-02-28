@@ -2,6 +2,7 @@
 
 import base64
 import hashlib
+import json
 import os
 import sqlite3
 import uuid
@@ -62,7 +63,7 @@ def init_db():
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "is_admin" not in columns:
         conn.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0")
-    for col in ["cookidoo_email", "cookidoo_password_enc", "cookidoo_country", "cookidoo_language"]:
+    for col in ["cookidoo_email", "cookidoo_password_enc", "cookidoo_country", "cookidoo_language", "filters_json"]:
         if col not in columns:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
     conn.commit()
@@ -261,6 +262,32 @@ def get_cookidoo_credentials(username: str) -> dict | None:
             "country": row["cookidoo_country"] or "de",
             "language": row["cookidoo_language"] or "de-DE",
         }
+    except Exception:
+        return None
+
+
+def save_user_filters(username: str, filters: dict) -> None:
+    """Filter-Einstellungen eines Users speichern."""
+    conn = _get_db()
+    conn.execute(
+        "UPDATE users SET filters_json = ? WHERE username = ?",
+        (json.dumps(filters), username),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_user_filters(username: str) -> dict | None:
+    """Gespeicherte Filter-Einstellungen eines Users laden."""
+    conn = _get_db()
+    row = conn.execute(
+        "SELECT filters_json FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    if not row or not row["filters_json"]:
+        return None
+    try:
+        return json.loads(row["filters_json"])
     except Exception:
         return None
 

@@ -540,8 +540,9 @@ class CookidooPlanner:
 
             if slot_key in ("m", "a"):
                 # Custom-Ratio für Hauptgänge
-                available_custom = [r for r in available if r in self._custom_recipes]
-                available_other = [r for r in available if r not in self._custom_recipes]
+                # "eigene" = aus Cookidoo-Sammlungen (custom + managed), "neue" = Algolia-Suche
+                available_custom = [r for r in available if r.source in ("custom", "managed")]
+                available_other = [r for r in available if r.source not in ("custom", "managed")]
 
                 n_custom = round(n * custom_ratio / 100)
                 n_other = n - n_custom
@@ -597,8 +598,9 @@ class CookidooPlanner:
         available = [r for r in filtered if r.id not in exclude]
 
         if slot_type == "main":
-            available_custom = [r for r in available if r in self._custom_recipes]
-            available_other = [r for r in available if r not in self._custom_recipes]
+            # "eigene" = aus Cookidoo-Sammlungen (custom + managed), "neue" = Algolia-Suche
+            available_custom = [r for r in available if r.source in ("custom", "managed")]
+            available_other = [r for r in available if r.source not in ("custom", "managed")]
             use_custom = random.randint(1, 100) <= custom_ratio
             if use_custom and available_custom:
                 recipe = random.choice(available_custom)

@@ -19,8 +19,9 @@ from flask import Flask, jsonify, render_template, request, session
 from auth import (
     admin_required, clear_cookidoo_credentials, create_invite_code,
     delete_invite_code, delete_user, get_all_users, get_cookidoo_credentials,
-    get_invite_codes, init_db, is_admin, login_required,
-    register_user, reset_user_password, save_cookidoo_credentials, verify_user,
+    get_invite_codes, get_user_filters, init_db, is_admin, login_required,
+    register_user, reset_user_password, save_cookidoo_credentials,
+    save_user_filters, verify_user,
 )
 from planner import CookidooPlanner
 
@@ -335,6 +336,25 @@ def api_save():
         return jsonify({"success": True, **result})
     except Exception as e:
         return jsonify({"error": f"Speichern fehlgeschlagen: {e}"}), 500
+
+
+# ===== Filter (serverseitig gespeichert pro User) =====
+
+@app.route("/api/filters", methods=["GET"])
+@login_required
+def api_get_filters():
+    filters = get_user_filters(session["user"])
+    if filters:
+        return jsonify({"success": True, "filters": filters})
+    return jsonify({"success": True, "filters": None})
+
+
+@app.route("/api/filters", methods=["POST"])
+@login_required
+def api_save_filters():
+    filters = request.get_json() or {}
+    save_user_filters(session["user"], filters)
+    return jsonify({"success": True})
 
 
 # ===== Cookidoo-Zugangsdaten (gespeichert pro User) =====

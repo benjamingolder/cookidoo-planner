@@ -783,7 +783,7 @@ function resetFilters() {
     saveFiltersToStorage();
 }
 
-// ===== Filter localStorage =====
+// ===== Filter localStorage + Server =====
 
 function saveFiltersToStorage() {
     try {
@@ -799,9 +799,30 @@ function saveFiltersToStorage() {
             preferred_ingredients: preferredIngredients,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // Asynchron ans Backend senden (kein await, blockiert UI nicht)
+        fetch("/api/filters", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        }).catch(e => console.warn("Filter server-sync fehlgeschlagen:", e));
     } catch (e) {
         console.warn("Filter speichern fehlgeschlagen:", e);
     }
+}
+
+async function loadFiltersFromServer() {
+    try {
+        const resp = await fetch("/api/filters");
+        if (!resp.ok) { loadFiltersFromStorage(); return; }
+        const result = await resp.json();
+        if (result.filters) {
+            // Server-Filter in localStorage schreiben und anwenden (Server hat Vorrang)
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(result.filters));
+        }
+    } catch (e) {
+        console.warn("Filter vom Server laden fehlgeschlagen:", e);
+    }
+    loadFiltersFromStorage();
 }
 
 function loadFiltersFromStorage() {
@@ -956,7 +977,7 @@ async function tryAutoConnectCookidoo() {
             showLoading("Sammlungen werden geladen...");
             await apiCall("/api/collections");
 
-            loadFiltersFromStorage();
+            await loadFiltersFromServer();
             showScreen("main-app");
             renderDayCards();
             hideLoading();
@@ -1141,7 +1162,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
         }
         showLoading("Sammlungen werden geladen...");
         await apiCall("/api/collections");
-        loadFiltersFromStorage();
+        await loadFiltersFromServer();
         showScreen("main-app");
         renderDayCards();
         hideLoading();
