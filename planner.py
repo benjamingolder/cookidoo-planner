@@ -317,19 +317,11 @@ class CookidooPlanner:
 
     def _set_language_filter(self, languages: list[str] | None) -> None:
         """Setzt den Algolia-Sprachfilter basierend auf den gewählten Sprachen."""
-        locale_map = {
-            "de": ["de-DE", "de-AT", "de-CH"],
-            "fr": ["fr-FR", "fr-BE", "fr-CH"],
-            "it": ["it-IT", "it-CH"],
-            "en": ["en-GB", "en-US"],
-        }
         if not languages:
             self._language_filter = ""
             return
-        locales = []
-        for lang in languages:
-            locales.extend(locale_map.get(lang.lower(), [lang]))
-        self._language_filter = " OR ".join(f"locales:{loc}" for loc in locales)
+        # Algolia-Index nutzt das Feld "language" mit 2-Buchstaben-Code (de, fr, it, en)
+        self._language_filter = " OR ".join(f"language:{lang}" for lang in languages)
         log.info(f"Sprachfilter gesetzt: {self._language_filter}")
 
     async def search_with_filters(
@@ -434,19 +426,18 @@ class CookidooPlanner:
                         source="managed", collection_name=coll.name,
                     ))
 
-        total_from_collections = len(self._custom_recipes) + len(self._managed_recipes)
-        if total_from_collections < 20:
-            log.info(f"Nur {total_from_collections} Rezepte aus Sammlungen, starte Algolia-Suche...")
-            search_terms = random.sample(SEARCH_TERMS, min(20, len(SEARCH_TERMS)))
-            results = await asyncio.gather(
-                *[self._search_algolia(term, count=40) for term in search_terms]
-            )
-            seen_ids = {r.id for r in self._custom_recipes + self._managed_recipes}
-            for recipe_list in results:
-                for recipe in recipe_list:
-                    if recipe.id not in seen_ids:
-                        seen_ids.add(recipe.id)
-                        self._search_recipes.append(recipe)
+        # Immer Algolia-Rezepte laden – sie dienen als "neue Rezepte" für den Ratio-Slider
+        log.info(f"Sammlungen: {len(self._custom_recipes)} eigene, {len(self._managed_recipes)} verwaltete. Starte Algolia-Suche...")
+        search_terms = random.sample(SEARCH_TERMS, min(20, len(SEARCH_TERMS)))
+        results = await asyncio.gather(
+            *[self._search_algolia(term, count=40) for term in search_terms]
+        )
+        seen_ids = {r.id for r in self._custom_recipes + self._managed_recipes}
+        for recipe_list in results:
+            for recipe in recipe_list:
+                if recipe.id not in seen_ids:
+                    seen_ids.add(recipe.id)
+                    self._search_recipes.append(recipe)
 
         return {
             "custom_recipes": len(self._custom_recipes),
